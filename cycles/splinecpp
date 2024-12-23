@@ -1,0 +1,146 @@
+#include <iostream>
+#include <vector>
+#include <cmath>
+#include <string>
+#include <algorithm>
+#include <sstream>
+#include <stdexcept>
+
+using namespace std; // Используем стандартное пространство имен
+
+// Функция для преобразования числа в строку с заданной точностью
+string doubleToString(double value, int precision) {
+    stringstream ss;
+    ss.precision(precision);
+    ss << fixed << value;
+    return ss.str();
+}
+
+// Функция для вычисления максимальной длины строки
+int maxStringLength(const vector<string>& strings) {
+    int maxLength = 0;
+    for (const auto& str : strings) {
+        maxLength = max(maxLength, (int)str.length());
+    }
+    return maxLength;
+}
+
+// Функция для форматирования вывода элемента
+string formatOutput(double value, int precision, int fieldWidth) {
+    string strValue = doubleToString(value, precision);
+    int padding = fieldWidth - strValue.length();
+    if (padding > 0) {
+        return string(padding, ' ') + strValue; // Добавляем пробелы слева
+    } else {
+        return strValue;
+    }
+}
+
+// Функция для печати матрицы
+void printMatrix(const vector<vector<double>>& matrix, int precision = 2, int fieldWidth = 8) {
+    int rows = matrix.size();
+    if (rows == 0) {
+        return;
+    }
+    int cols = matrix[0].size();
+
+    for (int i = 0; i < rows; ++i) {
+        vector<string> rowStrings;
+        for (int j = 0; j < cols; ++j) {
+            rowStrings.push_back(doubleToString(matrix[i][j], precision));
+        }
+
+        int maxLength = maxStringLength(rowStrings);
+
+        for (int j = 0; j < cols; ++j) {
+           cout << formatOutput(matrix[i][j], precision, fieldWidth) << " ";
+        }
+        cout << endl;
+    }
+    cout << endl;
+}
+
+// Функция для прямого хода метода Гаусса
+bool forwardElimination(vector<vector<double>>& matrix) {
+    int n = matrix.size();
+    for (int i = 0; i < n; ++i) {
+        // 1. Поиск опорного элемента (максимального по модулю в текущем столбце)
+        int maxRow = i;
+        for (int k = i + 1; k < n; ++k) {
+            if (abs(matrix[k][i]) > abs(matrix[maxRow][i])) {
+                maxRow = k;
+            }
+        }
+
+         // 2. Если опорный элемент (текущий или найденный максимальный) равен 0, то матрица вырождена, решения нет
+        if (abs(matrix[maxRow][i]) < 1e-10) {
+          return false; // Матрица вырождена
+        }
+
+        // 3. Меняем местами текущую строку и строку с опорным элементом, если нужно
+        if (maxRow != i) {
+            swap(matrix[i], matrix[maxRow]);
+        }
+
+        // 4. Прямой ход (преобразование к верхнетреугольному виду)
+        for (int k = i + 1; k < n; ++k) {
+            double factor = matrix[k][i] / matrix[i][i];
+            for (int j = i; j <= n; ++j) {
+                matrix[k][j] -= factor * matrix[i][j];
+            }
+        }
+    }
+    return true;
+}
+
+// Функция для обратного хода метода Гаусса
+vector<double> backSubstitution(const vector<vector<double>>& matrix) {
+    int n = matrix.size();
+    vector<double> solution(n);
+
+    for (int i = n - 1; i >= 0; --i) {
+        solution[i] = matrix[i][n]; // Берём свободный член уравнения
+        for (int j = i + 1; j < n; ++j) {
+            solution[i] -= matrix[i][j] * solution[j];
+        }
+        solution[i] /= matrix[i][i];
+    }
+    return solution;
+}
+
+int main() {
+    setlocale(LC_ALL, "ru"); // Устанавливаем русскую локаль
+
+    int n;
+    cout << "Введите размерность системы уравнений (n): ";
+    cin >> n;
+
+    vector<vector<double>> augmentedMatrix(n, vector<double>(n + 1));
+
+    cout << "Введите расширенную матрицу (коэффициенты и свободные члены):" << endl;
+    for (int i = 0; i < n; ++i) {
+        for (int j = 0; j <= n; ++j) {
+            cin >> augmentedMatrix[i][j];
+        }
+    }
+
+    cout << "Исходная расширенная матрица:" << endl;
+    printMatrix(augmentedMatrix);
+
+     if (!forwardElimination(augmentedMatrix)) {
+        cout << "Система уравнений не имеет единственного решения (матрица вырождена)." << endl;
+        return 1;
+    }
+
+    cout << "Матрица после прямого хода:" << endl;
+    printMatrix(augmentedMatrix);
+
+    vector<double> solution = backSubstitution(augmentedMatrix);
+
+    cout << "Решение системы уравнений:" << endl;
+    for (int i = 0; i < n; ++i) {
+        cout << "x" << i + 1 << " = " << doubleToString(solution[i],4) << endl;
+    }
+
+    return 0;
+}
